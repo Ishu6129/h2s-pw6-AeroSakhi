@@ -12,12 +12,17 @@ type RateLimitStore = Map<string, RateLimitEntry>;
 const GLOBAL_KEY = '__aerosakhi_rateLimitStore';
 
 function getStore(): RateLimitStore {
-  const existing = (globalThis as Record<string, unknown>)[GLOBAL_KEY] as
+  const globalObj = globalThis as Record<string, unknown>;
+  if (!globalObj[GLOBAL_KEY]) {
+    delete globalObj['__rateLimitStore'];
+  }
+  const existing = (globalObj[GLOBAL_KEY] ?? globalObj['__rateLimitStore']) as
     | RateLimitStore
     | undefined;
   if (existing) return existing;
   const store = new Map<string, RateLimitEntry>();
-  (globalThis as Record<string, unknown>)[GLOBAL_KEY] = store;
+  globalObj[GLOBAL_KEY] = store;
+  globalObj['__rateLimitStore'] = store;
   return store;
 }
 

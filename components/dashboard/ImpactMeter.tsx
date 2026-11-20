@@ -1,5 +1,7 @@
 'use client';
 
+import { memo } from 'react';
+
 interface ImpactMeterProps {
   score: number;
   level: string;
@@ -21,7 +23,8 @@ function levelColor(level: string): string {
   }
 }
 
-export function ImpactMeter({ score, level, description }: ImpactMeterProps) {
+/** Circular SVG gauge visualising the overall mitigation impact score. */
+export const ImpactMeter = memo(function ImpactMeter({ score, level, description }: ImpactMeterProps) {
   const color = levelColor(level);
   const circumference = 2 * Math.PI * 52;
   const offset = circumference - (score / 100) * circumference;
@@ -68,4 +71,4 @@ export function ImpactMeter({ score, level, description }: ImpactMeterProps) {
       </div>
     </div>
   );
-}
+});

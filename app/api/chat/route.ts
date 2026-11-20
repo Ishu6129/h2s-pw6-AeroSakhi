@@ -6,6 +6,7 @@ import { classifyQuery } from '@/lib/pollution-classifier';
 import { chunkInput } from '@/lib/input-chunker';
 import { createChatCompletion, selectModel } from '@/lib/groq';
 import { getSystemPrompt } from '@/lib/prompt-templates';
+import { generateCacheKey, getCachedResponse, setCachedResponse } from '@/lib/cache';
 import type { ChatResponse } from '@/types/aerosakhi';
 
 export const dynamic = 'force-dynamic';
@@ -62,6 +63,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const classification = classifyQuery(parsed.message);
     const model = selectModel(classification.complexity);
 
+    // ── Check cache (skip if conversation has history) ──────────────
+    const hasHistory = parsed.history && parsed.history.length > 0;
+    const cacheKey = hasHistory ? '' : generateCacheKey(model, parsed.message);
+
+    if (!hasHistory && cacheKey) {
+      const cached = getCachedResponse(cacheKey);
+      if (cached) {
+        const response: ChatResponse = {
+          message: cached,
+          model,
+          complexity: classification.complexity,
+        };
+        return NextResponse.json(response, {
+          status: 200,
+          headers: { ...rateLimit.headers, 'X-Cache': 'HIT' },
+        });
+      }
+    }
+
     // ── Chunk if needed ─────────────────────────────────────────────
     const { chunks } = chunkInput(parsed.message);
     const userContent = chunks.length > 1
@@ -84,13 +104,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // ── Call LLM ────────────────────────────────────────────────────
     const reply = await createChatCompletion({ messages, model });
 
+    // ── Cache the response ──────────────────────────────────────────
+    if (!hasHistory && cacheKey) {
+      setCachedResponse(cacheKey, reply);
+    }
+
     const response: ChatResponse = {
       message: reply,
       model,
       complexity: classification.complexity,
     };
 
-    return NextResponse.json(response, { status: 200, headers: rateLimit.headers });
+    return NextResponse.json(response, {
+      status: 200,
+      headers: { ...rateLimit.headers, 'X-Cache': 'MISS' },
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'An internal error occurred.';
     return NextResponse.json(

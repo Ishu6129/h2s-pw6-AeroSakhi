@@ -1,9 +1,13 @@
 'use client';
 
+import { memo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export function Header() {
+/**
+ * Sticky application navigation header with active-link indicators and telemetry status.
+ */
+export const Header = memo(function Header() {
   const pathname = usePathname();
 
   const links = [
@@ -50,4 +54,4 @@ export function Header() {
       </div>
     </header>
   );
-}
+});

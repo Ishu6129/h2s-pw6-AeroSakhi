@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { formatInlineText } from '@/components/ui/FormattedContent';
 
@@ -40,7 +41,10 @@ function getAqiColor(level: string): string {
   }
 }
 
-export function AirQualityCard({ city, aqi, level, recommendations }: AirQualityCardProps) {
+/**
+ * Renders the regional air quality baseline card with computed AQI and protective protocols.
+ */
+export const AirQualityCard = memo(function AirQualityCard({ city, aqi, level, recommendations }: AirQualityCardProps) {
   const variant = aqiVariant(level);
   const color = getAqiColor(level);
 
@@ -84,4 +88,4 @@ export function AirQualityCard({ city, aqi, level, recommendations }: AirQuality
       )}
     </article>
   );
-}
+});

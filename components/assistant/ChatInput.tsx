@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, type KeyboardEvent, type FormEvent } from 'react';
+import { useState, useCallback, memo, type KeyboardEvent, type FormEvent } from 'react';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -10,7 +10,10 @@ interface ChatInputProps {
 
 const MAX_CHARS = 5000;
 
-export function ChatInput({ onSend, isLoading, disabled = false }: ChatInputProps) {
+/**
+ * Accessible query input with character counter, Shift+Enter multi-line, and loading states.
+ */
+export const ChatInput = memo(function ChatInput({ onSend, isLoading, disabled = false }: ChatInputProps) {
   const [text, setText] = useState('');
 
   const handleSubmit = useCallback(
@@ -100,4 +103,4 @@ export function ChatInput({ onSend, isLoading, disabled = false }: ChatInputProp
       </fieldset>
     </form>
   );
-}
+});

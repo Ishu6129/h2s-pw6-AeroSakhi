@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import type { RoutineSuggestion as RoutineSuggestionType } from '@/types/aerosakhi';
 
@@ -19,7 +20,8 @@ function difficultyVariant(difficulty: string): 'low' | 'medium' | 'high' {
   return 'high';
 }
 
-export function RoutineSuggestion({ suggestion }: RoutineSuggestionProps) {
+/** Displays a before/after comparison card for a single routine improvement. */
+export const RoutineSuggestion = memo(function RoutineSuggestion({ suggestion }: RoutineSuggestionProps) {
   return (
     <article className="suggestion-card" aria-label={`Intervention: ${suggestion.suggestedAlternative}`}>
       <div className="suggestion-header">
@@ -74,4 +76,4 @@ export function RoutineSuggestion({ suggestion }: RoutineSuggestionProps) {
       </div>
     </article>
   );
-}
+});

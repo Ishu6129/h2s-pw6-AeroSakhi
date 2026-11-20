@@ -1,7 +1,24 @@
 'use client';
 
-import { ChatWindow } from '@/components/assistant/ChatWindow';
-import { UsageWidget } from '@/components/ui/UsageWidget';
+import dynamic from 'next/dynamic';
+
+/** Dynamically imported ChatWindow — reduces initial bundle for the assistant page. */
+const ChatWindow = dynamic(
+  () => import('@/components/assistant/ChatWindow').then((mod) => ({ default: mod.ChatWindow })),
+  {
+    loading: () => (
+      <div className="card" style={{ minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span className="loading-spinner" />
+      </div>
+    ),
+  },
+);
+
+/** Dynamically imported UsageWidget — non-critical sidebar loaded on demand. */
+const UsageWidget = dynamic(
+  () => import('@/components/ui/UsageWidget').then((mod) => ({ default: mod.UsageWidget })),
+  { ssr: false },
+);
 
 export default function AssistantPage() {
   return (

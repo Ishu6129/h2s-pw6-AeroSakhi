@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import type { UsageStats } from '@/types/aerosakhi';
 
-export function UsageWidget() {
+/**
+ * Real-time telemetry monitor showing per-endpoint rate limits and remaining gateway quota.
+ */
+export const UsageWidget = memo(function UsageWidget() {
   const [stats, setStats] = useState<UsageStats | null>(null);
   const [fetchError, setFetchError] = useState('');
 
@@ -103,4 +106,4 @@ export function UsageWidget() {
       </div>
     </div>
   );
-}
+});

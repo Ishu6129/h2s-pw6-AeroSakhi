@@ -74,15 +74,17 @@ AeroSakhi was chosen for this vertical because:
 
 2. **Two-Tier AI Model Routing** — Complex queries (health analysis, multi-factor reasoning, policy) route to `openai/gpt-oss-120b`; simple queries (greetings, quick tips) route to `openai/gpt-oss-20b` for sub-second responses.
 
-3. **Smart Input Chunking** (`lib/input-chunker.ts`) — Large inputs are split at logical boundaries (paragraphs → lines → sentences → words) with token-aware sizing, preventing context window overflow.
+3. **LRU In-Memory Response Caching** (`lib/cache.ts`) — Deterministic hashing of query parameters caches identical prompt completions with configurable TTL (5 min) and capacity eviction (100 entries), bypassing redundant LLM calls and returning `X-Cache: HIT` headers with 0 token overhead.
 
-4. **Zod Schema Validation** (`lib/validators.ts`) — Every API input is validated against strict Zod schemas before processing, preventing injection and ensuring type safety at runtime.
+4. **Smart Input Chunking** (`lib/input-chunker.ts`) — Large inputs are split at logical boundaries (paragraphs → lines → sentences → words) with token-aware sizing, preventing context window overflow.
 
-5. **Sliding Window Rate Limiting** (`lib/rate-limiter.ts`) — Per-IP, per-endpoint rate limiting with `globalThis` singleton persistence across HMR, returning standard `X-RateLimit-*` headers.
+5. **Zod Schema Validation** (`lib/validators.ts`) — Every API input is validated against strict Zod schemas before processing, preventing injection and ensuring type safety at runtime.
 
-6. **SSE Streaming** (`app/api/stream/route.ts`) — Server-Sent Events for real-time token-by-token output, eliminating perceived latency.
+6. **Sliding Window Rate Limiting** (`lib/rate-limiter.ts`) — Per-IP, per-endpoint rate limiting with `globalThis` singleton persistence across HMR, returning standard `X-RateLimit-*` headers.
 
-7. **Defense-in-Depth Security** — 7 HTTP security headers (CSP, HSTS, X-Frame-Options, etc.), input length limits, API key isolation, and typed error handling.
+7. **SSE Streaming** (`app/api/stream/route.ts`) — Server-Sent Events for real-time token-by-token output, eliminating perceived latency.
+
+8. **Defense-in-Depth Security** — 7 HTTP security headers (CSP, HSTS, X-Frame-Options, etc.), input length limits, API key isolation, and typed error handling.
 
 ---
 
@@ -161,16 +163,19 @@ AeroSakhi was chosen for this vertical because:
 
 ### Efficiency (Target: 100/100)
 
+- **LRU Response Cache** — [`lib/cache.ts`](lib/cache.ts): In-memory TTL cache with deterministic hashing for identical queries, eliminating redundant LLM round-trips and token waste
 - **Heuristic Pre-Classification** — [`lib/pollution-classifier.ts`](lib/pollution-classifier.ts): Zero-latency regex-based routing before any LLM call
 - **Two-Tier Model Routing** — Complex → `openai/gpt-oss-120b`; Simple → `openai/gpt-oss-20b` (sub-second latency)
 - **Smart Input Chunking** — [`lib/input-chunker.ts`](lib/input-chunker.ts): Hierarchical paragraph→line→sentence→word splitting with merge-back
 - **SSE Streaming** — [`app/api/stream/route.ts`](app/api/stream/route.ts): Real-time token output via Server-Sent Events
+- **React.memo Pure Components** — All presentation and card components wrapped in `memo()` to prevent wasted DOM re-renders
+- **Dynamic Code Splitting** — Heavy interactive components loaded via `next/dynamic` to minimize initial JS payload
 - **Package Optimization** — `experimental.optimizePackageImports: ['groq-sdk']` in next.config.ts
 
 ### Testing (Target: 100/100)
 
-- **119 unit tests** across 7 test files in `__tests__/`
-- **All lib modules covered**: groq, rate-limiter, validators, prompt-templates, pollution-classifier, input-chunker
+- **130 unit tests** across 8 test files in `__tests__/`
+- **All lib modules covered**: groq, cache, rate-limiter, validators, prompt-templates, pollution-classifier, input-chunker
 - **Component tests**: FormattedContent parser (table parsing, inline formatting, block detection)
 - **Test categories**: happy path, edge cases, error handling, boundary values
 - Run with `npm test` — see [Testing section](#-testing) below
@@ -225,6 +230,7 @@ aerosakhi/
 │   ├── useChat.ts                  # Chat state management hook
 │   └── useStreamingResponse.ts     # SSE streaming consumer hook
 ├── lib/
+│   ├── cache.ts                    # LRU in-memory response cache with TTL
 │   ├── groq.ts                     # Groq SDK singleton + model helpers
 │   ├── input-chunker.ts            # Token-aware text chunking
 │   ├── pollution-classifier.ts     # Regex-based query complexity classifier
@@ -235,6 +241,7 @@ aerosakhi/
 │   └── aerosakhi.ts                # All TypeScript interfaces & types
 ├── __tests__/
 │   ├── lib/
+│   │   ├── cache.test.ts               # LRU cache & TTL tests (11 tests)
 │   │   ├── groq.test.ts                # Groq client tests (12 tests)
 │   │   ├── input-chunker.test.ts       # Chunking algorithm tests (18 tests)
 │   │   ├── pollution-classifier.test.ts # Classifier tests (22 tests)
@@ -330,6 +337,7 @@ npm run test:coverage
 
 | Test File | Module | Tests | Coverage Areas |
 |-----------|--------|-------|----------------|
+| `cache.test.ts` | `lib/cache.ts` | 11 | Key generation, cache hits/misses, TTL expiration, overwrite, LRU capacity eviction |
 | `groq.test.ts` | `lib/groq.ts` | 12 | Singleton init, API key validation, model selection, chat completion, error handling |
 | `rate-limiter.test.ts` | `lib/rate-limiter.ts` | 18 | Rate enforcement, window reset, IP isolation, endpoint isolation, headers, usage stats |
 | `validators.test.ts` | `lib/validators.ts` | 22 | Schema validation, field constraints, length limits, type coercion, error types |
@@ -338,7 +346,7 @@ npm run test:coverage
 | `input-chunker.test.ts` | `lib/input-chunker.ts` | 18 | Token estimation, chunking boundaries, content preservation, edge cases, constants |
 | `FormattedContent.test.ts` | `components/ui/FormattedContent.tsx` | 11 | Inline bold, code tags, links, section parsing, disclaimer extraction, table parsing, dividers |
 
-**Total: 119 tests across 7 test files**
+**Total: 130 tests across 8 test files**
 
 ---
 

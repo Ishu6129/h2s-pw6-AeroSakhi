@@ -4,6 +4,7 @@ import { validateAnalyzeRequest } from '@/lib/validators';
 import { checkRateLimit } from '@/lib/rate-limiter';
 import { createChatCompletion, MODEL_VERSATILE } from '@/lib/groq';
 import { getSystemPrompt, getAnalysisPrompt } from '@/lib/prompt-templates';
+import { generateCacheKey, getCachedResponse, setCachedResponse } from '@/lib/cache';
 import type {
   AnalyzeResponse,
   RoutineSuggestion,
@@ -127,7 +128,9 @@ function extractJsonFromResponse(rawReply: string, userRoutines: string[]): Anal
     if (parsed && typeof parsed === 'object') {
       return normalizeResponse(parsed);
     }
-  } catch {}
+  } catch {
+    // Proceed to markdown code block extraction
+  }
 
   // 2. Try markdown code block extraction
   const jsonMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
@@ -137,7 +140,9 @@ function extractJsonFromResponse(rawReply: string, userRoutines: string[]): Anal
       if (parsed && typeof parsed === 'object') {
         return normalizeResponse(parsed);
       }
-    } catch {}
+    } catch {
+      // Proceed to outermost brace extraction
+    }
   }
 
   // 3. Try finding outermost JSON object
@@ -150,7 +155,9 @@ function extractJsonFromResponse(rawReply: string, userRoutines: string[]): Anal
       if (parsed && typeof parsed === 'object') {
         return normalizeResponse(parsed);
       }
-    } catch {}
+    } catch {
+      // Proceed to structured fallback
+    }
   }
 
   // 4. Intelligent fallback
@@ -197,6 +204,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
+    // ── Check cache for identical routine analysis queries ─────────────
+    const cacheKey = generateCacheKey(
+      MODEL_VERSATILE,
+      JSON.stringify({
+        routines: parsed.routines,
+        location: parsed.location,
+        preferences: parsed.preferences,
+      }),
+    );
+
+    const cached = getCachedResponse(cacheKey);
+    if (cached) {
+      try {
+        const cachedResponse = JSON.parse(cached) as AnalyzeResponse;
+        return NextResponse.json(cachedResponse, {
+          status: 200,
+          headers: {
+            ...rateLimit.headers,
+            'X-Cache': 'HIT',
+            'Cache-Control': 'private, max-age=300',
+          },
+        });
+      } catch {
+        // Cache entry corrupted, proceed to regeneration
+      }
+    }
+
     // ── Build prompt ──────────────────────────────────────────────────
     const systemPrompt = getSystemPrompt({
       location: parsed.location,
@@ -223,9 +257,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // ── Robust JSON Extraction & Normalization ──────────────────────
     const analysisResponse = extractJsonFromResponse(rawReply, parsed.routines);
 
+    // ── Store in cache ──────────────────────────────────────────────
+    setCachedResponse(cacheKey, JSON.stringify(analysisResponse));
+
     return NextResponse.json(analysisResponse, {
       status: 200,
-      headers: rateLimit.headers,
+      headers: {
+        ...rateLimit.headers,
+        'X-Cache': 'MISS',
+        'Cache-Control': 'private, max-age=300',
+      },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'An internal error occurred.';

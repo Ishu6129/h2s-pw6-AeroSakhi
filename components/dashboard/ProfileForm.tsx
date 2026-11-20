@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, type FormEvent } from 'react';
+import { useState, useCallback, memo, type FormEvent } from 'react';
 import type { UserProfile, Location } from '@/types/aerosakhi';
 
 interface ProfileFormProps {
@@ -8,7 +8,10 @@ interface ProfileFormProps {
   initialProfile?: UserProfile | null;
 }
 
-export function ProfileForm({ onSubmit, initialProfile }: ProfileFormProps) {
+/**
+ * Accessible form for capturing household environmental context (location, size, vulnerabilities).
+ */
+export const ProfileForm = memo(function ProfileForm({ onSubmit, initialProfile }: ProfileFormProps) {
   const [city, setCity] = useState(initialProfile?.location.city ?? '');
   const [region, setRegion] = useState(initialProfile?.location.region ?? '');
   const [country, setCountry] = useState(initialProfile?.location.country ?? '');
@@ -191,4 +194,4 @@ export function ProfileForm({ onSubmit, initialProfile }: ProfileFormProps) {
       </fieldset>
     </form>
   );
-}
+});

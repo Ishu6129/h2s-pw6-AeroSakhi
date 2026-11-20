@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { FormattedContent } from '@/components/ui/FormattedContent';
 
@@ -12,7 +13,10 @@ interface ChatMessageProps {
   };
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+/**
+ * Individual chat message bubble displaying user queries or AI responses with metadata badges.
+ */
+export const ChatMessage = memo(function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
 
   return (
@@ -53,4 +57,4 @@ export function ChatMessage({ message }: ChatMessageProps) {
       )}
     </div>
   );
-}
+});

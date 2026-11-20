@@ -399,7 +399,7 @@ export function FormattedContent({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback
+      // Fallback if clipboard API is restricted
     }
   };
 
