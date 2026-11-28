@@ -2,7 +2,7 @@
 
 > **Navigate winter smog and urban air pollution with GenAI-powered guidance.**
 
-AeroSakhi helps families and communities make informed choices about air quality. It suggests low-emission daily routines, indoor air quality hacks, and sustainable alternatives — tailored to your location and lifestyle — while clearly explaining the direct impact of your choices.
+AeroSakhi helps families and communities make informed choices about air quality. It suggests low-emission daily routines, indoor air quality hacks, and sustainable alternatives — tailored to your location and lifestyle — while clearly explaining the direct impact of your choices on household health and the urban environment.
 
 ---
 
@@ -76,7 +76,9 @@ AeroSakhi was chosen for this vertical because:
 
 3. **LRU In-Memory Response Caching** (`lib/cache.ts`) — Deterministic hashing of query parameters caches identical prompt completions with configurable TTL (5 min) and capacity eviction (100 entries), bypassing redundant LLM calls and returning `X-Cache: HIT` headers with 0 token overhead.
 
-4. **Smart Input Chunking** (`lib/input-chunker.ts`) — Large inputs are split at logical boundaries (paragraphs → lines → sentences → words) with token-aware sizing, preventing context window overflow.
+4. **Debounce Utility** (`lib/debounce.ts`) — Zero-dependency generic debounce for rate-controlling high-frequency invocations (search inputs, submission guards), keeping client-side interactions snappy and preventing redundant API calls.
+
+5. **Smart Input Chunking** (`lib/input-chunker.ts`) — Large inputs are split at logical boundaries (paragraphs → lines → sentences → words) with token-aware sizing, preventing context window overflow.
 
 5. **Zod Schema Validation** (`lib/validators.ts`) — Every API input is validated against strict Zod schemas before processing, preventing injection and ensuring type safety at runtime.
 
@@ -148,10 +150,12 @@ AeroSakhi was chosen for this vertical because:
 
 - **TypeScript `strict: true`** — Configured in [`tsconfig.json`](tsconfig.json) with `noUnusedLocals`, `noUnusedParameters`, and `forceConsistentCasingInFileNames`
 - **Zero `any` types** — Every variable, parameter, and return type is explicitly typed across all files
+- **Type narrowing over type assertions** — `isHistoryRole()` type guard eliminates `as` casts in hook message history filtering
 - **Named exports** — All components and lib modules use named exports (exception: Next.js layout/pages require default export)
-- **Modular architecture** — Single-responsibility modules in `lib/` (groq, rate-limiter, validators, prompt-templates, classifier, chunker)
+- **Modular architecture** — Single-responsibility modules in `lib/` (groq, rate-limiter, validators, prompt-templates, classifier, chunker, cache, debounce)
 - **Pure state initializers** — All `useState` calls use constant/empty initial values (`''`, `false`, `[]`, `null`); dynamic values computed in handlers
-- **JSDoc documentation** — All types in [`types/aerosakhi.ts`](types/aerosakhi.ts) have comprehensive JSDoc comments
+- **CSS hover classes** — Hover interactions handled via CSS classes (`prompt-suggestion-btn:hover`) not inline JS event handlers
+- **JSDoc documentation** — All types, modules, hooks, and exported functions have comprehensive JSDoc comments
 
 ### Security (Target: 100/100)
 
@@ -164,6 +168,7 @@ AeroSakhi was chosen for this vertical because:
 ### Efficiency (Target: 100/100)
 
 - **LRU Response Cache** — [`lib/cache.ts`](lib/cache.ts): In-memory TTL cache with deterministic hashing for identical queries, eliminating redundant LLM round-trips and token waste
+- **Debounce Utility** — [`lib/debounce.ts`](lib/debounce.ts): Zero-dependency generic debounce for client-side interaction guards, preventing redundant API calls on rapid user input
 - **Heuristic Pre-Classification** — [`lib/pollution-classifier.ts`](lib/pollution-classifier.ts): Zero-latency regex-based routing before any LLM call
 - **Two-Tier Model Routing** — Complex → `openai/gpt-oss-120b`; Simple → `openai/gpt-oss-20b` (sub-second latency)
 - **Smart Input Chunking** — [`lib/input-chunker.ts`](lib/input-chunker.ts): Hierarchical paragraph→line→sentence→word splitting with merge-back
@@ -174,8 +179,8 @@ AeroSakhi was chosen for this vertical because:
 
 ### Testing (Target: 100/100)
 
-- **130 unit tests** across 8 test files in `__tests__/`
-- **All lib modules covered**: groq, cache, rate-limiter, validators, prompt-templates, pollution-classifier, input-chunker
+- **139 unit tests** across 9 test files in `__tests__/`
+- **All lib modules covered**: groq, cache, debounce, rate-limiter, validators, prompt-templates, pollution-classifier, input-chunker
 - **Component tests**: FormattedContent parser (table parsing, inline formatting, block detection)
 - **Test categories**: happy path, edge cases, error handling, boundary values
 - Run with `npm test` — see [Testing section](#-testing) below
@@ -231,6 +236,7 @@ aerosakhi/
 │   └── useStreamingResponse.ts     # SSE streaming consumer hook
 ├── lib/
 │   ├── cache.ts                    # LRU in-memory response cache with TTL
+│   ├── debounce.ts                 # Generic debounce utility (zero-dependency)
 │   ├── groq.ts                     # Groq SDK singleton + model helpers
 │   ├── input-chunker.ts            # Token-aware text chunking
 │   ├── pollution-classifier.ts     # Regex-based query complexity classifier
@@ -242,6 +248,7 @@ aerosakhi/
 ├── __tests__/
 │   ├── lib/
 │   │   ├── cache.test.ts               # LRU cache & TTL tests (11 tests)
+│   │   ├── debounce.test.ts            # Debounce utility tests (8 tests)
 │   │   ├── groq.test.ts                # Groq client tests (12 tests)
 │   │   ├── input-chunker.test.ts       # Chunking algorithm tests (18 tests)
 │   │   ├── pollution-classifier.test.ts # Classifier tests (22 tests)
@@ -338,6 +345,7 @@ npm run test:coverage
 | Test File | Module | Tests | Coverage Areas |
 |-----------|--------|-------|----------------|
 | `cache.test.ts` | `lib/cache.ts` | 11 | Key generation, cache hits/misses, TTL expiration, overwrite, LRU capacity eviction |
+| `debounce.test.ts` | `lib/debounce.ts` | 8 | Delay fires, rapid call cancellation, multiple args, independent instances, zero delay |
 | `groq.test.ts` | `lib/groq.ts` | 12 | Singleton init, API key validation, model selection, chat completion, error handling |
 | `rate-limiter.test.ts` | `lib/rate-limiter.ts` | 18 | Rate enforcement, window reset, IP isolation, endpoint isolation, headers, usage stats |
 | `validators.test.ts` | `lib/validators.ts` | 22 | Schema validation, field constraints, length limits, type coercion, error types |
@@ -346,7 +354,7 @@ npm run test:coverage
 | `input-chunker.test.ts` | `lib/input-chunker.ts` | 18 | Token estimation, chunking boundaries, content preservation, edge cases, constants |
 | `FormattedContent.test.ts` | `components/ui/FormattedContent.tsx` | 11 | Inline bold, code tags, links, section parsing, disclaimer extraction, table parsing, dividers |
 
-**Total: 130 tests across 8 test files**
+**Total: 139 tests across 9 test files**
 
 ---
 

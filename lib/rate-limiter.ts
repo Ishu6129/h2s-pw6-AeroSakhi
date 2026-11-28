@@ -1,3 +1,10 @@
+/**
+ * @module rate-limiter
+ * @description Sliding-window, per-IP, per-endpoint rate limiter with a
+ * `globalThis` singleton store for HMR-safe persistence across Next.js
+ * hot-reloads.  Returns standard `X-RateLimit-*` headers with every result.
+ */
+
 import type { RateLimitResult, UsageStats } from '@/types/aerosakhi';
 
 // ---------------------------------------------------------------------------

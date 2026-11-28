@@ -1,8 +1,16 @@
 'use client';
 
+/**
+ * @module useStreamingResponse
+ * @description React hook for consuming the AeroSakhi SSE streaming endpoint
+ * (`/api/stream`).  Manages the streaming lifecycle, real-time token
+ * accumulation, abort control, and error handling.
+ */
+
 import { useState, useCallback, useRef } from 'react';
 import type { UserProfile, StreamEvent } from '@/types/aerosakhi';
 
+/** Return type for the {@link useStreamingResponse} hook. */
 interface UseStreamingResponseReturn {
   streamContent: string;
   isStreaming: boolean;
@@ -12,6 +20,13 @@ interface UseStreamingResponseReturn {
   clearStream: () => void;
 }
 
+/**
+ * Manages a Server-Sent Event streaming session against `/api/stream`.
+ * Accumulates tokens into `streamContent` as they arrive, exposes the
+ * resolved model identifier on completion, and handles abort/error cases.
+ *
+ * @returns Streaming state and control functions.
+ */
 export function useStreamingResponse(): UseStreamingResponseReturn {
   const [streamContent, setStreamContent] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);

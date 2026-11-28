@@ -158,26 +158,8 @@ export function ChatWindow() {
                     <button
                       key={prompt}
                       type="button"
+                      className="prompt-suggestion-btn"
                       onClick={() => handleSelectSuggestion(prompt)}
-                      style={{
-                        textAlign: 'left',
-                        background: 'var(--bg-elevated)',
-                        border: '1px solid var(--border-subtle)',
-                        borderRadius: 'var(--radius-md)',
-                        padding: '0.65rem 0.85rem',
-                        color: 'var(--text-secondary)',
-                        fontSize: '0.875rem',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--border-default)';
-                        e.currentTarget.style.color = '#ffffff';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                        e.currentTarget.style.color = 'var(--text-secondary)';
-                      }}
                     >
                       {prompt} →
                     </button>

@@ -1,3 +1,11 @@
+/**
+ * @module validators
+ * @description Zod schemas and validation helpers for all AeroSakhi API
+ * endpoints.  Every API route validates its request body through these
+ * schemas before any downstream processing, providing runtime type safety
+ * and input sanitisation beyond TypeScript's compile-time checks.
+ */
+
 import { z } from 'zod';
 import type { ChatRequest, AnalyzeRequest, StreamRequest } from '@/types/aerosakhi';
 
